@@ -157,7 +157,7 @@ def process_search_trends(spark, df_index):
     #transpose symptom columns to rows
     df_st_tr = transpose_search_trends(df_st, ['date', 'key'])
 
-    #FIXME: throw Exception
+    #asserts the number of columns are still correct
     assert ((len(df_st.columns)-2) * df_st.count()) == df_st_tr.count()
 
     # replace search_trend in symptom
@@ -248,7 +248,7 @@ def containsCovidContent(url):
     
     return False
 
-def process_gdelt_data(spark):
+def process_gdelt_data(spark, datestr):
     """
     Processes the gdelt dataset by day.
 
@@ -264,14 +264,14 @@ def process_gdelt_data(spark):
     Writes the cleaned data back to S3 partitioned by country code.
 
     spark: spark session
+    datestr: day to be processed, needs to be a string in the format YYYYMMDD
     """
     
     # get schema of gdelt data
     schema = schema_helper.gdelt_s0_schema
 
-    #FIXME: partition by date
     # read in original data from S3
-    gdelt_file = 'gdelt/20201215.export.CSV'
+    gdelt_file = 'gdelt/'+datestr+'.export.CSV'
     df_gdelt = spark.read.option("delimiter", "\t") \
                 .csv(folder_s0 + gdelt_file,header=False,schema=schema)
 
@@ -477,11 +477,8 @@ def main():
     spark = create_spark_session()
 
     process_google_data(spark)
-    process_gdelt_data(spark)
+    process_gdelt_data(spark, '20201215')
     process_oxford_data(spark)
-
-    #FIXME: validate data
-
 
 if __name__ == "__main__":
     main()

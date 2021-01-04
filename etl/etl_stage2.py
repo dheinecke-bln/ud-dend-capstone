@@ -182,13 +182,9 @@ def process_facts_searches(spark, df_dim_symptoms):
     df_st = df_st.join(df_dim_symptoms.select("id","symptom"),on=["symptom"],how="inner")
     df_st = df_st.withColumnRenamed("id", "symptomId")  
 
-    # generate row number
-    #df_st = df_st.select(F.row_number()\
-    #                 .over(Window.partitionBy()\
-    #                 .orderBy(df_st['date'],df_st['regionId']))\
-    #                 .alias("id"), "regionId", "date", "symptomId", "search_trend", "country_code")
-
-    #FIXME: generate id
+    #generate id
+    df_st = df_st.withColumn("id", concat(col("date"), lit("-"), \
+                    col("regionId"), lit("-"), col("symptomId")))
 
     #write factTable to stage 2
     df_st.write.mode('overwrite') \
@@ -388,7 +384,7 @@ def process_facts_covid(spark, df_dim_region, df_dim_time):
 
     #validation of number of records
     factCount_final = df_fact_covid.count()
-    assert factCount == factCount_final #FIXME: throw exception
+    assert factCount == factCount_final
 
     #validation of number of columns
     len(df_fact_covid.columns) #FIXME: check and throw exception
