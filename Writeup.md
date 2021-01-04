@@ -58,6 +58,8 @@ The data can be found here: https://github.com/OxCGRT/covid-policy-tracker/blob/
 
     Short summary of datasets, reference to notebooks, Spark on EMR
 
+The assessment of the datasets was done with Apache Spark on AWS EMR. For details see the Jupyter Notebook in the Folder [Assessment](../assessment)
+
 ## Data Architecture
 
     Include a description of how you would approach the problem differently under the following scenarios:
