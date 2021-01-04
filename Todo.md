@@ -1,4 +1,3 @@
-* TODO: finish readme
 * TODO: create dict as md-File
 * TODO: push data
 

@@ -6,13 +6,13 @@ This document describes the steps to be taken to run the etl processes or Jupyte
 
 Create an S3 bucket on AWS. Download the data of the data folder and upload it to the newly created bucket.
 
-**Note**: place the data in a folder named stage0_raw
+**Note**: place the data in a folder named `stage0_raw`
 
 Copy the file `misc/bootstrap.sh` to a S3 location of your choice.
 
 ## Setup AWS EMR Cluster
 
-Create an EMR-Cluster on AWS. The EMR version used in this project is emr-5.29.0.
+Create an EMR-Cluster on AWS. The EMR version used in this project is `emr-5.29.0`.
 
 Use the following EMR components:
 
