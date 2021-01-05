@@ -179,6 +179,38 @@ Possible solutions are:
 
 To create dashboards and visualizations the possibilities are also numerous. AWS offers QuickSight which could be used for example on top of Redshift Spectrum. In the end this is also a decision of the projects budgets. A very cost efficient solution would be to build a open source dashboard using technologies like Plotly and host them on AWS.
 
+### Summary
+
+#### Why this data model?
+
+I decided to use more than one fact table and link it with standardized dimensions because of the natural difference of observation of those fact tables. If would have been possible to combine all the facts in on big fact table but this would have led to unnatural queries. The user would have to know how to query certain aspects and how to avoid misleading or wrong aggregations.
+
+I followed the Galaxy Schema approach which means combining multiple Star schemas and reusing dimension tables. "The Dimension tables from both structures can be linked as per the requirement. The resulting system appears in the structure like a Constellation of stars, wherein fact tables are the stars here. This explains the name Galaxy schema. This type of schema is also called as ‘Fact constellation’ schema, as it has multiple fact tables." [7]
+
+The data in the schema will be more distinct, "in contrast to star schema but similar to snowflake schema". [7] It is also easy to implement the created parquet files in a Redshift Cluster if necessary. Contraints can be easily derived from the data model and the data dictionary.
+
+The data quality of the Galaxy Schema is very good and there is almost no redundancy. 
+
+To query the data one will have to work with joins, using the dimension as lookup tables. This can lead to some complexity but is acceptable in that case.
+
+** Sample Query **
+This query demonstrates how to answer the question, if there is an correlation/relation between the number of COVID cases and the number of publications. The data is only queried on a country level and grouped by year and month.
+
+`SELECT SUM(new_confirmed) SUM(new_tested), SUM(gd_events_general), SUM(gd_events_covid), AVG(gd_avgtone), AVG(gd_avgtone_covid)
+FROM factCovid fc
+INNER JOIN dimRegion as dr ON fc.regionId = dr.id
+INNER JOIN dimTime as dt on fc.date = dt.date
+WHERE dr.aggretion_level = 0
+GROUP BY dr.country_code, fc.year, fc.month`
+
+#### Why Spark, Pyspark and EMR?
+
+Spark is very efficient technologie, designed to handle very large amounts of data. Especially in combination with Cloud Services it is a great choice to process big datasets fast, scalable and cost efficiently. The API of Spark is easy to use. For example the use of Spark SQL makes it easy for Data Engineers and Data Analysts to query information.
+
+PySpark is a great implementation, making it easy to use Spark in Python Scripts and/or Jupyter Notebook. Many developers are familiar with Python and love it.
+
+Finally AWS is a great choice when it comes to scalibilty, reliability and security. The possibilities are endless and the services are continously growing. For example in November 2020 AWS announced a managed services for Apache Airflow making it easier for Data Engineers to use this great tool without taking care of installing and maintaining the software.
+
 ## Outlook and next steps
 
 This project did not come to its end yet. There are several more steps to be taken. The biggest possible improvements are in the field of ingestion and automation of the data processing. Also an analytical component is to be build. In details this means:
@@ -193,9 +225,24 @@ This project did not come to its end yet. There are several more steps to be tak
 
 The update cycle of the data should be set to daily. The publisher of the datasets released them also in a daily interval.
 
-### Scalability
+## Scenarios which would need an adaption
 
-The described solution is very scalable. The amount of storage on S3 is unlimited. Spark can handle lots of data, if there is an performance issue, the EMR cluster could be scaled or the data can be processed in partitions (e.g. by day and country). If the final queries in the analytical components would run into performance issues, specific data marts for given analytical tasks could be created to solve those issues.
+### The data was increased by 100x.
+
+The described solution is very scalable. The amount of storage on S3 is unlimited. 
+
+Spark can handle lots of data, if there is an performance issue, the EMR cluster could be scaled or the data can be processed in partitions (e.g. by day and country). Backfilling could be used, so that only new data is processed every new day.
+
+If the final queries in the analytical components would run into performance issues, specific data marts for given analytical tasks could be created to solve those issues.
+
+### The pipelines would be run on a daily basis by 7 am every day.
+
+Using Airflow would be a great approach to fit the requirements of this scenario. The DAG could be scheduled to 7 am every day and would process only the data for that day, appending the output of the ETL processes to the parquet files.
+
+### The database needed to be accessed by 100+ people.
+
+This should also be no problem, because the solutions of AWS are in general very scalable. Read only access with Spark on an EMR cluster is a great and scalable approach. If necessary the number of Nodes of the cluster could be extended. Also performance tuning for the cluster could be applied, see [this article](https://towardsdatascience.com/easy-fixes-for-sparksql-performance-ad4166792e6e) for example.
+
 
 [1]: https://github.com/GoogleCloudPlatform/covid-19-open-data/blob/main/README.md
 [2]: https://github.com/GoogleCloudPlatform/covid-19-open-data/blob/main/README.md
@@ -203,3 +250,4 @@ The described solution is very scalable. The amount of storage on S3 is unlimite
 [4]: https://github.com/OxCGRT/covid-policy-tracker
 [5]: https://docs.aws.amazon.com/redshift/latest/dg/c-spectrum-external-schemas.html
 [6]: https://aws.amazon.com/de/managed-workflows-for-apache-airflow/
+[7]: https://www.educba.com/galaxy-schema/
