@@ -466,6 +466,66 @@ def process_oxford_data(spark):
                 .partitionBy("country_code") \
                 .parquet(folder_s1+"oxford-gov-response/oxfgovresp.parquet")
 
+def compare_count(spark, stage0_csv, stage1_parquet, stage0_header='true', operator='eq'):
+    """
+    Compares the number of records of a dataset between stage0 and stage1.
+    Raises an error if number of records are not equal.
+
+    spark: spark session
+    stage0_csv: csv file of stage0
+    stage1_parquet: parquet file of stage1
+    stage0_header: indicator if csv should be read with header
+    operator: 'eq' if counts of stage should be equal, 
+              'gt' if count of stage1 should be bigger than stage0
+
+    raises ValueError if validation fails 
+    """
+    df_csv_cnt = spark.read.format('csv') \
+                    .options(header=stage0_header) \
+                    .load(stage0_csv).count()
+
+    df_prq_cnt = spark.read.parquet(stage1_parquet).count()
+
+    if operator == 'eq' and df_csv_cnt != df_prq_cnt:
+        errstr = """validation error occured for datasource {0}. 
+                    Count of stage0 {1} is not equal 
+                    count of stage1 {2}.""" \
+                        .format(stage0_csv, df_csv_cnt, df_prq_cnt)
+        raise ValueError(errstr)
+    elif operator == 'gt' and df_csv_cnt >= df_prq_cnt:
+        errstr = """validation error occured for datasource {0}. 
+                    Count of stage0 {1} is not bigger than 
+                    count of stage1 {2}.""" \
+                        .format(stage0_csv, df_csv_cnt, df_prq_cnt)
+        raise ValueError(errstr)
+
+def validate(spark, gdelt_date):
+    """
+    Validates the datasets. Makes a simple comparison of the number of records
+    between stage0 and stage1 for each dataset.
+
+    spark: spark session
+    gdelt_date: temporary parameter to indicate which gdelt dataset was transformed
+    needs to be refactored when all gdelt data is read
+    """
+    compare_count(spark, folder_s0 + 'google/epidemiology.csv',\
+                         folder_s1 + 'google/epidemiology.parquet')
+
+    compare_count(spark, folder_s0 + 'google/mobility.csv',\
+                         folder_s1 + 'google/mobility.parquet')
+
+    compare_count(spark, folder_s0 + 'google/google-search-trends.csv',\
+                         folder_s1 + 'google/searchtrends.parquet',\
+                         operator='gt')    
+
+    compare_count(spark, folder_s0 + 'oxford-gov-response/OxCGRT_latest.csv',\
+                         folder_s1 + "oxford-gov-response/oxfgovresp.parquet")
+
+    gdelt_file = 'gdelt/'+gdelt_date+'.export.CSV'
+    compare_count(spark, folder_s0 + gdelt_file,\
+                         folder_s1+"gdelt/gdelt.parquet",
+                         stage0_header='false')                         
+
 def main():
     """
     main for etl process to read, extract and write
@@ -476,9 +536,15 @@ def main():
     """
     spark = create_spark_session()
 
+    #only temporary solution, has to be dynamic when
+    #all of the gdelt data is processed
+    gdelt_date = '20201215'
+
     process_google_data(spark)
-    process_gdelt_data(spark, '20201215')
+    process_gdelt_data(spark, gdelt_date)
     process_oxford_data(spark)
+
+    validate(spark, gdelt_date)
 
 if __name__ == "__main__":
     main()

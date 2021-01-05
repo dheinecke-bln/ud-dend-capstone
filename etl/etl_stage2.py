@@ -4,8 +4,11 @@ import os
 from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType,StructField, StringType, DateType, IntegerType, DoubleType
-from pyspark.sql.functions import col, explode, array, struct, expr, sum, lit
+from pyspark.sql.types import StructType,StructField, \
+                        StringType, DateType, IntegerType, DoubleType
+from pyspark.sql.functions import col, explode, array, \
+                        struct, expr, sum, lit, concat,\
+                        monotonically_increasing_id
 from pyspark.sql.window import Window
 
 # read in config
@@ -386,14 +389,49 @@ def process_facts_covid(spark, df_dim_region, df_dim_time):
     factCount_final = df_fact_covid.count()
     assert factCount == factCount_final
 
-    #validation of number of columns
-    len(df_fact_covid.columns) #FIXME: check and throw exception
+    #create auto-increment id
+    df_fact_covid = df_fact_covid.withColumn('id',\
+                        monotonically_increasing_id())
 
     #write to stage 2
     df_fact_covid.write \
                  .mode('overwrite') \
                  .partitionBy("country_code") \
                  .parquet(folder_s2+"/factCovid.parquet")
+
+def validate_not_null(spark, table, column):
+    """
+    Validates a column of a table not to be null.
+
+    spark: spark session
+    table: table to be checked, has to be a parquet file 
+        located in stage2 folder
+    column: column of the given table to be checked
+
+    raises ValueError if validation fails and NULL values exist
+    """
+    df = spark.read.parquet(folder_s2+"/"+table)
+    cnt_isnull = df.where(col(column).isNull()).count()
+
+    if cnt_isnull > 0:
+        errmsg = """Validation error occured. 
+                    Column {column} of table {table} 
+                    has {cnt_isnull} NULL values."""
+        raise ValueError(errmsg)
+
+def validate(spark):
+    """
+    Validates the data. Checks selected attributes of the different
+    parquet tables to not be null.
+    """
+    validate_not_null(spark, 'dimRegion.parquet', 'id')
+    validate_not_null(spark, 'dimRegion.parquet', 'aggregation_level')
+    validate_not_null(spark, 'dimTime.parquet', 'date')
+    validate_not_null(spark, 'dimSymptom.parquet', 'id')
+    validate_not_null(spark, 'dimSymptom.parquet', 'symptom')
+    validate_not_null(spark, 'factCovid.parquet', 'regionId')
+    validate_not_null(spark, 'factCovid.parquet', 'date')
+    validate_not_null(spark, 'factSearches.parquet', 'symptomId')
 
 def main():
     """
@@ -408,11 +446,14 @@ def main():
     #process dimensions
     df_dim_region = process_dim_region(spark)
     df_dim_time = process_dim_time(spark)
-    df_dim_symptoms = process_dim_symptoms(spark)
+    #df_dim_symptoms = process_dim_symptoms(spark)
 
     #process facts
-    process_facts_searches(spark, df_dim_symptoms)
+    #process_facts_searches(spark, df_dim_symptoms)
     process_facts_covid(spark, df_dim_region, df_dim_time)
+
+    #process data validation
+    validate(spark)
 
 
 if __name__ == "__main__":

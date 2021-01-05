@@ -8,6 +8,8 @@ Create an S3 bucket on AWS. Download the data of the data folder and upload it t
 
 **Note**: place the data in a folder named `stage0_raw`
 
+**Note**: because the files `epidemiology.csv` and `google-search-trends.csv` are too large for github, please download them manually from [here](https://storage.googleapis.com/covid19-open-data/v2/epidemiology.csv) and [here](https://storage.googleapis.com/covid19-open-data/v2/google-search-trends.csv) and upload them to your bucket in the folder `stage0_raw/google`.
+
 Copy the file `misc/bootstrap.sh` to a S3 location of your choice.
 
 ## Setup AWS EMR Cluster
